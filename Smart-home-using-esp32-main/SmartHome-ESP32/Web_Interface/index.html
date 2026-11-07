@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Home — البيت الذكي</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet" />
+  <style>
+    /* ─── Reset & Base ─────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #080c14;
+      --bg2:       #0e1422;
+      --card:      #111827;
+      --card-h:    #151e30;
+      --border:    #1e2a40;
+      --border-on: rgba(16,185,129,.45);
+      --green:     #10b981;
+      --green-dim: #059669;
+      --green-glow:rgba(16,185,129,.18);
+      --blue:      #3b82f6;
+      --blue-dim:  rgba(59,130,246,.25);
+      --amber:     #f59e0b;
+      --text:      #f1f5f9;
+      --text-dim:  #64748b;
+      --text-mid:  #94a3b8;
+      --radius:    16px;
+      --shadow:    0 8px 32px rgba(0,0,0,.45);
+    }
+
+    body {
+      font-family: 'Tajawal', sans-serif;
+      background:
+        radial-gradient(ellipse at 10% 0%,  rgba(16,185,129,.07) 0%, transparent 45%),
+        radial-gradient(ellipse at 90% 0%,  rgba(59,130,246,.06) 0%, transparent 40%),
+        var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 24px 16px 60px;
+    }
+
+    /* ─── Layout ────────────────────────────────────────────────────── */
+    .wrap { max-width: 960px; margin: 0 auto; }
+
+    /* ─── Header ────────────────────────────────────────────────────── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+
+    .brand { display: flex; align-items: center; gap: 14px; }
+
+    .logo {
+      width: 46px; height: 46px; border-radius: 14px; flex-shrink: 0;
+      background: linear-gradient(135deg, var(--green), #06b6d4);
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 24px rgba(16,185,129,.35);
+    }
+    .logo svg { width: 24px; height: 24px; fill: none; stroke: #fff; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+
+    .brand-text h1 {
+      font-size: 1.5rem; font-weight: 800; letter-spacing: -.3px;
+      background: linear-gradient(135deg, #fff 30%, #94a3b8);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .brand-text p { color: var(--text-dim); font-size: .82rem; margin-top: 1px; }
+
+    /* status badge */
+    #status-badge {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 16px; border-radius: 999px; font-size: .82rem; font-weight: 600;
+      background: rgba(245,158,11,.12); border: 1px solid rgba(245,158,11,.3); color: var(--amber);
+      transition: all .3s ease;
+    }
+    #status-badge.ok { background: rgba(16,185,129,.12); border-color: rgba(16,185,129,.3); color: var(--green); }
+    .dot {
+      width: 9px; height: 9px; border-radius: 50%; background: currentColor;
+      animation: pulse 1.8s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    /* ─── Stats row ─────────────────────────────────────────────────── */
+    .stats {
+      display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 28px;
+    }
+    .stat {
+      flex: 1; min-width: 120px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 14px 16px;
+    }
+    .stat-value { font-size: 1.55rem; font-weight: 800; color: var(--green); line-height: 1; }
+    .stat-label { font-size: .76rem; color: var(--text-dim); margin-top: 4px; }
+
+    /* ─── Section title ─────────────────────────────────────────────── */
+    .section-title {
+      font-size: 1rem; font-weight: 700; color: var(--text-mid);
+      margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+    }
+    .section-title::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+
+    /* ─── Global controls ───────────────────────────────────────────── */
+    .toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 28px; }
+    .btn {
+      border: none; cursor: pointer; font-family: 'Tajawal', sans-serif;
+      font-size: .88rem; font-weight: 700; border-radius: 11px;
+      padding: 10px 20px; transition: transform .15s, box-shadow .15s;
+    }
+    .btn:active { transform: scale(.95); }
+    .btn-on {
+      background: linear-gradient(135deg, var(--green), var(--green-dim));
+      color: #fff; box-shadow: 0 4px 16px rgba(16,185,129,.25);
+    }
+    .btn-off {
+      background: linear-gradient(135deg, #ef4444, #b91c1c);
+      color: #fff; box-shadow: 0 4px 14px rgba(239,68,68,.2);
+    }
+    .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-mid); }
+
+    /* ─── Relay grid ────────────────────────────────────────────────── */
+    /* Mobile: 2 columns × 4 rows */
+    .relay-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+    @media (min-width: 560px) {
+      .relay-grid { grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 32px; }
+    }
+
+    .relay-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      cursor: pointer;
+      position: relative; overflow: hidden;
+      transition: all .25s ease;
+      animation: fadeUp .35s ease backwards;
+    }
+    .relay-card::before {
+      content: ''; position: absolute; inset: 0 0 auto 0;
+      height: 3px; background: var(--border); transition: .25s;
+    }
+    .relay-card.on { border-color: var(--border-on); box-shadow: 0 8px 28px var(--green-glow); }
+    .relay-card.on::before { background: linear-gradient(90deg, var(--green), #06b6d4); }
+    .relay-card:hover { background: var(--card-h); }
+
+    @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+    .relay-card-top {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      margin-bottom: 14px;
+    }
+    .relay-icon {
+      width: 38px; height: 38px; border-radius: 11px;
+      background: #1a2035; display: flex; align-items: center; justify-content: center;
+      transition: .25s;
+    }
+    .relay-card.on .relay-icon { background: rgba(16,185,129,.15); }
+    .relay-icon svg { width: 19px; height: 19px; stroke: var(--text-dim); transition: .25s; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+    .relay-card.on .relay-icon svg { stroke: var(--green); }
+
+    /* Toggle switch */
+    .toggle { position: relative; display: inline-block; width: 50px; height: 28px; flex-shrink: 0; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .track {
+      position: absolute; inset: 0; border-radius: 28px;
+      background: #1e2a40; transition: .25s; cursor: pointer;
+    }
+    .track::before {
+      content: ''; position: absolute;
+      width: 20px; height: 20px; border-radius: 50%;
+      left: 4px; bottom: 4px; background: #fff;
+      box-shadow: 0 1px 4px rgba(0,0,0,.35); transition: .25s;
+    }
+    input:checked + .track { background: linear-gradient(135deg, var(--green), var(--green-dim)); }
+    input:checked + .track::before { transform: translateX(22px); }
+
+    .relay-name { font-size: .88rem; font-weight: 700; margin-bottom: 2px; }
+    @media (min-width: 560px) { .relay-name { font-size: .97rem; } }
+    .relay-pin  { font-size: .71rem; color: var(--text-dim); font-family: 'SF Mono', Menlo, monospace; }
+    .relay-state {
+      font-size: .73rem; font-weight: 800; letter-spacing: .6px;
+      text-transform: uppercase; margin-top: 10px; color: var(--text-dim);
+    }
+    .relay-card.on .relay-state { color: var(--green); }
+
+    /* ─── Switch status grid ────────────────────────────────────────── */
+    .switch-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+    @media (min-width: 560px) {
+      .switch-grid { grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    }
+    .switch-card {
+      background: rgba(255,255,255,.02);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      display: flex; align-items: center; gap: 12px;
+      transition: all .25s ease;
+      animation: fadeUp .35s ease backwards;
+    }
+    .switch-card.on {
+      background: var(--blue-dim);
+      border-color: rgba(59,130,246,.4);
+    }
+    .sw-dot {
+      width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
+      background: var(--border); transition: .25s;
+    }
+    .switch-card.on .sw-dot {
+      background: var(--blue);
+      box-shadow: 0 0 10px rgba(59,130,246,.55);
+    }
+    .sw-info { flex: 1; }
+    .sw-name { font-size: .88rem; font-weight: 700; }
+    .sw-pin  { font-size: .68rem; color: var(--text-dim); font-family: 'SF Mono', Menlo, monospace; }
+    .sw-state { font-size: .72rem; font-weight: 800; color: var(--text-dim); letter-spacing: .5px; text-transform: uppercase; margin-top: 4px; }
+    .switch-card.on .sw-state { color: var(--blue); }
+
+    /* ─── Footer ────────────────────────────────────────────────────── */
+    footer {
+      margin-top: 36px; color: var(--text-dim); font-size: .76rem;
+      display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+    }
+
+    /* ─── Toast ─────────────────────────────────────────────────────── */
+    #toast {
+      position: fixed; bottom: 22px; left: 50%;
+      transform: translateX(-50%) translateY(12px);
+      background: var(--card); border: 1px solid var(--border);
+      padding: 11px 20px; border-radius: 11px; font-size: .85rem;
+      opacity: 0; pointer-events: none; transition: .25s;
+      box-shadow: var(--shadow); white-space: nowrap;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <div class="logo">
+        <!-- house icon -->
+        <svg viewBox="0 0 24 24"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg>
+      </div>
+      <div class="brand-text">
+        <h1>البيت الذكي</h1>
+        <p>Smart Home Control · Supabase Realtime</p>
+      </div>
+    </div>
+    <div id="status-badge">
+      <span class="dot"></span>
+      <span id="status-text">جاري الاتصال...</span>
+    </div>
+  </header>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-value" id="stat-on">0</div>
+      <div class="stat-label">مضاء حالياً</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value" id="stat-sw">0</div>
+      <div class="stat-label">مفاتيح نشطة</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value" id="stat-total">8</div>
+      <div class="stat-label">إجمالي الأجهزة</div>
+    </div>
+  </div>
+
+  <!-- Global Controls -->
+  <div class="toolbar">
+    <button class="btn btn-on"    onclick="setAll(true)">⚡ تشغيل الكل</button>
+    <button class="btn btn-off"   onclick="setAll(false)">🔴 إيقاف الكل</button>
+  </div>
+
+  <!-- Relays -->
+  <div class="section-title">💡 المصابيح والأجهزة — Relays</div>
+  <div class="relay-grid" id="relay-grid"></div>
+
+  <!-- Switches -->
+  <div class="section-title">🎛️ حالة المفاتيح الجدارية — Wall Switches</div>
+  <div class="switch-grid" id="switch-grid"></div>
+
+  <footer>
+    <span id="footer-ip">Supabase Realtime + Polling مع تحيات عمك العشاري</span>
+    <span id="footer-time">--</span>
+  </footer>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ============================================================================
+//  SUPABASE CONFIG
+// ============================================================================
+const SUPABASE_URL = "https://xhirfzebgtviooauclay.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhoaXJmemViZ3R2aW9vYXVjbGF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNzY5MzIsImV4cCI6MjA5ODY1MjkzMn0.thTirFPUT8RAt4XXQf1GrX7zYPgHvutbWjTQf8PQhkY";
+const ROW_ID = 1;
+
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ============================================================================
+//  ROOM CONFIGURATION
+//  Order matches the ESP32 array order: relay1/switch1 = index 0, etc.
+//  Each switch directly controls the relay at the same index.
+// ============================================================================
+const ROOMS = [
+  { name: "غرفة أبي",        relayPin: "GPIO 25", switchPin: "GPIO 32" },
+  { name: "غرفة جدتي",       relayPin: "GPIO 26", switchPin: "GPIO 12" },
+  { name: "المجلس",          relayPin: "GPIO 22", switchPin: "GPIO 33" },
+  { name: "الصالة",          relayPin: "GPIO 14", switchPin: "GPIO 4"  },
+  { name: "المطبخ",          relayPin: "GPIO 27", switchPin: "GPIO 19" },
+  { name: "حمام الديوان",    relayPin: "GPIO 21", switchPin: "GPIO 18" },
+  { name: "غرفة منيب",       relayPin: "GPIO 13", switchPin: "GPIO 5"  },
+  { name: "الحمام العائلي",  relayPin: "GPIO 23", switchPin: "GPIO 35" }
+  // Note: switch8 uses GPIO 36 (not 13) because GPIO 13 is relay7's output.
+];
+
+// ============================================================================
+//  BUILD CARDS
+// ============================================================================
+const relayGrid  = document.getElementById('relay-grid');
+const switchGrid = document.getElementById('switch-grid');
+
+ROOMS.forEach((room, idx) => {
+  const n = idx + 1;
+
+  // Relay card
+  const rc = document.createElement('div');
+  rc.id        = `relay-card-${n}`;
+  rc.className = 'relay-card';
+  rc.style.animationDelay = (idx * 0.05) + 's';
+  rc.innerHTML = `
+    <div class="relay-card-top">
+      <div class="relay-icon">
+        <svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+      </div>
+      <label class="toggle" onclick="event.stopPropagation()">
+        <input type="checkbox" id="relay-chk-${n}" onchange="toggleRelay(${n})">
+        <span class="track"></span>
+      </label>
+    </div>
+    <div class="relay-name">${room.name}</div>
+    <div class="relay-pin">${room.relayPin}</div>
+    <div class="relay-state" id="relay-state-${n}">OFF</div>
+  `;
+  rc.addEventListener('click', () => toggleRelay(n));
+  relayGrid.appendChild(rc);
+
+  // Switch status card
+  const sc = document.createElement('div');
+  sc.id        = `switch-card-${n}`;
+  sc.className = 'switch-card';
+  sc.style.animationDelay = (idx * 0.05) + 's';
+  sc.innerHTML = `
+    <div class="sw-dot" id="sw-dot-${n}"></div>
+    <div class="sw-info">
+      <div class="sw-name">مفتاح ${room.name}</div>
+      <div class="sw-pin">${room.switchPin}</div>
+      <div class="sw-state" id="sw-state-${n}">OFF</div>
+    </div>
+  `;
+  switchGrid.appendChild(sc);
+});
+
+// ============================================================================
+//  STATE
+// ============================================================================
+let currentData = {};
+
+// ============================================================================
+//  UPDATE UI from data object
+// ============================================================================
+  function updateUI(data) {
+    let relaysOn = 0;
+    let swOn = 0;
+
+    for (let i = 0; i < 8; i++) {
+      const n = i + 1;
+      const relayOn = !!data[`relay${n}`];
+      const switchOn = !!data[`switch${n}`];
+
+      if (relayOn) relaysOn++;
+      if (switchOn) swOn++;
+
+      // --- Relay card ---
+      const card = document.getElementById(`relay-card-${n}`);
+      const chk = document.getElementById(`relay-chk-${n}`);
+      const label = document.getElementById(`relay-state-${n}`);
+      if (card) card.className = 'relay-card' + (relayOn ? ' on' : '');
+      if (chk) chk.checked = relayOn;
+      if (label) label.textContent = relayOn ? 'ON  ●' : 'OFF';
+
+      // --- Switch card ---
+      const sc = document.getElementById(`switch-card-${n}`);
+      const st = document.getElementById(`sw-state-${n}`);
+      if (sc) sc.className = 'switch-card' + (switchOn ? ' on' : '');
+      if (st) st.textContent = switchOn ? 'شغال · ON' : 'طافي · OFF';
+    }
+
+    document.getElementById('stat-on').textContent = relaysOn;
+    document.getElementById('stat-sw').textContent = swOn;
+
+    // إظهار التحية فقط إذا كانت جميع المصابيح مضاءة
+    const footer = document.getElementById('footer-ip');
+
+    if (relaysOn === 8) {
+      footer.textContent = "Supabase Realtime + Polling مع تحيات عمك العشاري";
+    } else {
+      footer.textContent = "Supabase Realtime + Polling";
+    }
+
+    document.getElementById('footer-time').textContent =
+      'آخر تحديث: ' + new Date().toLocaleTimeString('ar-SA');
+  }
+
+// ============================================================================
+//  FETCH (polling fallback & initial load)
+// ============================================================================
+async function fetchState() {
+  try {
+    const { data, error } = await db
+      .from('devices')
+      .select('*')
+      .eq('id', ROW_ID)
+      .single();
+
+    if (error) throw error;
+    currentData = data;
+    updateUI(data);
+    setStatus(true, 'متصل · Connected');
+  } catch (e) {
+    setStatus(false, 'خطأ في الاتصال · Connection error تواصل مع عمك العشاري');
+  }
+}
+
+// ============================================================================
+//  TOGGLE RELAY  (optimistic UI → write to Supabase)
+// ============================================================================
+async function toggleRelay(n) {
+  const field    = `relay${n}`;
+  const newState = !currentData[field];
+  currentData[field] = newState;        // optimistic update
+  updateUI(currentData);
+  showToast((newState ? '✅ تم تشغيل' : '🔴 تم إيقاف') + ' ' + ROOMS[n - 1].name);
+
+  try {
+    await db.from('devices').update({ [field]: newState }).eq('id', ROW_ID);
+  } catch {
+    // Roll back on error
+    await fetchState();
+  }
+}
+
+// ============================================================================
+//  ALL ON / ALL OFF
+// ============================================================================
+async function setAll(state) {
+  const patch = {};
+  for (let n = 1; n <= 8; n++) {
+    patch[`relay${n}`]  = state;
+    currentData[`relay${n}`] = state;
+  }
+  updateUI(currentData);
+  showToast(state ? '✅ تم تشغيل جميع الأجهزة' : '🔴 تم إيقاف جميع الأجهزة');
+  try {
+    await db.from('devices').update(patch).eq('id', ROW_ID);
+  } catch {
+    await fetchState();
+  }
+}
+
+// ============================================================================
+//  STATUS BADGE
+// ============================================================================
+function setStatus(ok, text) {
+  const badge = document.getElementById('status-badge');
+  document.getElementById('status-text').textContent = text;
+  badge.className = ok ? 'ok' : '';
+}
+
+// ============================================================================
+//  TOAST
+// ============================================================================
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+// ============================================================================
+//  REALTIME subscription (instant push from Supabase)
+// ============================================================================
+db.channel('smart-home-realtime')
+  .on('postgres_changes', {
+    event: '*',
+    schema: 'public',
+    table: 'devices',
+    filter: `id=eq.${ROW_ID}`
+  }, payload => {
+    if (payload.new) {
+      currentData = payload.new;
+      updateUI(payload.new);
+      setStatus(true, 'بث فوري · Live Sync ⚡');
+    }
+  })
+  .subscribe(status => {
+    if (status === 'SUBSCRIBED') {
+      setStatus(true, 'متصل · Connected');
+    }
+  });
+
+// ============================================================================
+//  INIT
+// ============================================================================
+fetchState();
+setInterval(fetchState, 3000);   // polling as safety fallback
+</script>
+</body>
+</html>
